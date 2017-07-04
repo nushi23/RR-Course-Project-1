@@ -1,0 +1,120 @@
+```{r}
+library(knitr)
+```
+---
+Title: "PA1_template"
+author: "Anusha Verankki"
+date: "July 2, 2017"
+output: html_document
+==================================================================================
+Loading the data into a dataframe
+```{r read_data, echo=TRUE}
+act.dat<- read.csv("activity.csv")
+```
+
+Tidying the data set by omitting all the NA values and storing in new dataframe
+```{r tidy_data, echo = TRUE}
+actdat.tidy<- na.omit(act.dat)
+#Part 1: Finding the total number of steps taken in a day
+q1.sum<- aggregate(steps~date,actdat.tidy,sum)
+
+```
+
+Creating a histogram of the sum of each steps taken in a day, per interval
+```{r Plot1, echo = TRUE}
+#Plotting the histogram of total number of steps taken in a day 
+hist(q1.sum$steps, xlab = "Frequency", ylab = "Number of steps in a day", main = "Plot 1: Total steps taken per day")
+```
+
+finding the mean and median values in the tidy data set
+```{r mean&median, echo=TRUE}
+q1.mean<- mean(q1.sum$steps)
+q1.median<- median(q1.sum$steps)
+print(paste0("Mean is ",round(q1.mean,2)))
+print(paste0("Median is ",round(q1.median,2)))
+  
+#Finding the average number of steps taken in a day during an interval
+q2avg<- with(actdat.tidy,tapply(steps,interval,mean))
+intervals<- actdat.tidy$interval
+q2mean<-as.data.frame(cbind(intervals,q2avg))
+
+```
+Plotting the average number of steps taken in a day per interval
+```{r Plot2, echo=TRUE}
+plot(q2mean$intervals, q2mean$q2avg, type = "l", xlab = "Intervals", ylab = "average steps", main = "Plot 2: Avg number of steps per interval")
+```
+
+Finding the interval with the maximum steps
+```{r max_interval, echo=TRUE}
+#Finding the Max steps
+maxsteps<- max(q2avg)
+#Finding the interval with the max steps
+max.int<- q2mean[(q2mean$q2avg==maxsteps),]$intervals
+```
+
+Filling in the NA values in the data frame
+```{r filling_NA, echo=TRUE}
+
+# finding the total number of NAs 
+sum.na<- sum(is.na(act.dat))
+print(paste0("Total number of NAs is ", sum.na))
+
+#Top 5 rows of dataset before filling in NA values
+head(act.dat)
+
+#filling in missing values with average steps of that day
+k1<- dim(act.dat)
+q1.means<- aggregate(steps~date,act.dat, mean, na.action = NULL)
+avg.steps<- mean(act.dat$steps, na.rm = TRUE)
+
+#if the average steps for the day does not exist, insert the average steps for the dataset
+
+q1.means[is.na(q1.means)]<- avg.steps
+k2<- dim(q1.means)
+
+for (x in 1:k1[1]){
+    temp1<- act.dat[x,1]
+    
+    for (y in 1:k2[1]){
+      if ((is.na(temp1))&&(act.dat[x,2]==q1.means[y,1])) act.dat[x,1]<- q1.means[y,2]
+    }
+}
+
+#Top 5 rows of the dataset after filling in NA values
+head(act.dat)
+```
+
+Creating a histogram of the average steps per interval
+```{r Plot3, echo=TRUE}
+# histogram of total number of steps taken per day
+sum_updated<- aggregate(steps~date,act.dat,sum)
+hist(sum_updated$steps, xlab = "Frequency", ylab = "Number of steps in a day", main = "Plot 3: Total steps taken")
+```
+Recalculating the mean and median
+```{r mean&median2, echo=TRUE}
+q1.mean.updated<- mean(sum_updated$steps)
+q1.median.updated <- median(sum_updated$steps)
+print(paste0("Mean is ",round(q1.mean.updated,2)))
+print(paste0("Median is ",round(q1.median.updated,2)))
+
+```
+
+Examining the data on weekdays vs weekends 
+
+```{r weekday_data, echo=TRUE}
+daycol<- vector()
+wd<- weekdays(as.Date(act.dat$date))
+
+# adding a new column named daycol with 2 levels: weekday/weekend
+for (i in 1:k1[1]){
+  daycol[i]<- if (wd[i]=="Sunday") "weekend" else if (wd[i]=="Saturday") "weekend" else "weekday"
+}
+act.dat<- cbind(act.dat,daycol)
+```
+Displaying results on weekends vs weekdays 
+```{r Plot4, echo = TRUE}
+library(ggplot2)
+activity_day<- aggregate(steps~interval + daycol, act.dat, mean)
+dayplot<- ggplot(activity_day, aes(x = interval, y = steps, color = daycol))+geom_line()+labs (x = "Interval", y = "avg steps", title = "Plot 4: Avg steps per interval(weekdays vs weekdays)")
+print(dayplot)
+```
